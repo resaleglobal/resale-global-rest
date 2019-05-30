@@ -1,0 +1,13 @@
+version: "2"
+services:
+  django-rest:
+    container_name: django-rest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: django-rest
+    stdin_open: true
+    tty: true
+    ports:
+      - "80:80"
+      - "443:443"

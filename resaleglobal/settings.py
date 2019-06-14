@@ -26,7 +26,7 @@ SECRET_KEY = '6ut)^omh$aa*3=$z$g-#8@0&$mj9l*gy5b+36ialiyrp+n3e#c'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['0.0.0.0']
+ALLOWED_HOSTS = ['0.0.0.0', 'localhost']
 
 
 # Application definition
@@ -39,11 +39,13 @@ INSTALLED_APPS = [
     'resaleglobal.account',
     'rest_framework',
     'rest_framework.authtoken',
+    'corsheaders'
 ]
 
 AUTH_USER_MODEL = 'resaleglobal.User'
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
 ]
 
@@ -53,6 +55,9 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'resaleglobal.wsgi.application'
+
+CORS_ORIGIN_ALLOW_ALL = True
+
 
 
 # Database

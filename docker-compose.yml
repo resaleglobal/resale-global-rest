@@ -15,7 +15,7 @@ services:
       - migration
   migration:
     build: .
-    command: ./manage.py migrate
+    command: python manage.py migrate
     volumes:
       - .:/code
     depends_on:

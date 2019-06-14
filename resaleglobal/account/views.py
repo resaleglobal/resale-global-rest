@@ -66,3 +66,13 @@ class RegisterView(generics.CreateAPIView):
             password=password, email=email
         )
         return Response(status=status.HTTP_201_CREATED)
+
+
+class UserView(generics.CreateAPIView):
+
+    permission_classes = (
+        permissions.IsAuthenticated,
+    )
+
+    def get(self, request, *args, **kwargs):
+        return Response({'email': request.user.email, 'id': request.user.pk, 'name': request.user.get_full_name()})

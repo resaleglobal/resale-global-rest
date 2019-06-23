@@ -5,6 +5,8 @@ from rest_framework.response import Response
 from rest_framework import permissions, generics, status
 
 from resaleglobal.permissions import ResellerAdminPermission
+from resaleglobal.account.models import UserResellerAssignment, Reseller
+
 
 
 User = get_user_model()
@@ -19,4 +21,20 @@ class UsersView(generics.CreateAPIView):
   )
 
   def get(self, request, *args, **kwargs):
+    account_id = kwargs['accountId']
+    reseller = Reseller.objects.filter(pk=account_id).first()
+    assignment = UserResellerAssignment.objects.filter(reseller=reseller)
+
+    users = []
+
+    for a in assignment.all():
+      users.append({
+        'isAdmin': a.is_admin,
+        'email': a.user.email,
+        'firstName': a.user.first_name,
+        'lastName': a.user.last_name
+      })
+
+    return Response(users)
+
     return Response(status=status.HTTP_200_OK)

@@ -10,8 +10,6 @@ from pprint import pprint
 from django.core import serializers
 import json
 
-from resaleglobal.permissions import ResellerAdminPermission
-
 # Must set because we use a custom model.
 User = get_user_model()
 
@@ -30,7 +28,7 @@ class LoginView(generics.CreateAPIView):
     """
     # This permission class will overide the global permission
     # class setting
-    permission_classes = (permissions.AllowAny, ResellerAdminPermission)
+    permission_classes = (permissions.AllowAny,)
 
     queryset = User.objects.all()
 
@@ -74,7 +72,7 @@ class RegisterView(generics.CreateAPIView):
         return Response(status=status.HTTP_201_CREATED)
 
 
-class UserView(generics.CreateAPIView):
+class UserView(generics.CreateAPIView,):
 
     permission_classes = (
         permissions.IsAuthenticated,

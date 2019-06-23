@@ -6,7 +6,11 @@ from django.contrib.auth import get_user_model
 from rest_framework.response import Response
 from resaleglobal.serializers import TokenSerializer
 from resaleglobal.account.models import Reseller, UserResellerAssignment, UserConsignorAssignment, Domain, Consignor
+from pprint import pprint
+from django.core import serializers
+import json
 
+from resaleglobal.permissions import ResellerAdminPermission
 
 # Must set because we use a custom model.
 User = get_user_model()
@@ -26,7 +30,7 @@ class LoginView(generics.CreateAPIView):
     """
     # This permission class will overide the global permission
     # class setting
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (permissions.AllowAny, ResellerAdminPermission)
 
     queryset = User.objects.all()
 
@@ -77,15 +81,25 @@ class UserView(generics.CreateAPIView):
     )
 
     def get(self, request, *args, **kwargs):
-        resellers = UserResellerAssignment.objects.filter(user_id=request.user)
-        consignors = UserConsignorAssignment.objects.filter(user_id=request.user)
+        resellers = []
+        consignors = []
+        rq = UserResellerAssignment.objects.filter(user=request.user)
+        
+        for r in rq.all():
+            resellers.append(r.json())
+
+        cq = UserConsignorAssignment.objects.filter(user=request.user).select_related('consignor__domain')
+
+        for c in cq.all():
+            consignors.append(c.json())
+
         return Response(
             {
                 'email': request.user.email,
                 'id': request.user.pk,
                 'name': request.user.get_full_name(),
-                'resellers': resellers.values(),
-                'consignors': consignors.values()
+                'resellers': resellers,
+                'consignors': consignors
             })
 
 
@@ -96,21 +110,12 @@ class ResellerView(generics.CreateAPIView):
     )
 
     def post(self, request, *args, **kwargs):
-        user_id = request.user.pk
         reseller_name = request.data.get("name")
         reseller_domain = request.data.get("domain")
         domain = Domain.objects.create(name=reseller_domain)
         reseller = Reseller.objects.create(name=reseller_name, domain=domain)
-        assignment = UserResellerAssignment.objects.create(user_id=request.user, reseller_id=reseller, is_admin=True)
-        return Response(
-            {
-                'reseller': {
-                    'id': reseller.pk,
-                    'name': reseller.name,
-                    'domain': reseller.domain.name,
-                    'isAdmin': assignment.is_admin
-                }
-            })
+        assignment = UserResellerAssignment.objects.create(user=request.user, reseller=reseller, is_admin=True)
+        return Response(assignment.json())
 
 class ConsignorView(generics.CreateAPIView):
 
@@ -119,20 +124,12 @@ class ConsignorView(generics.CreateAPIView):
     )
 
     def post(self, request, *args, **kwargs):
-        user_id = request.user.pk
         consignor_name = request.data.get("name")
         consignor_domain = request.data.get("domain")
         domain = Domain.objects.create(name=consignor_domain)
         consignor = Consignor.objects.create(name=consignor_name, domain=domain)
-        assignment = UserConsignorAssignment.objects.create(user_id=request.user, consignor_id=consignor)
-        return Response(
-            {
-                'consignor': {
-                    'id': consignor.pk,
-                    'name': consignor.name,
-                    'domain': consignor.domain.name,
-                }
-            })
+        assignment = UserConsignorAssignment.objects.create(user=request.user, consignor=consignor)
+        return Response(assignment.json())
 
 
 

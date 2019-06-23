@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'resaleglobal',
     'resaleglobal.account',
+    'resaleglobal.admin',
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders'

@@ -32,7 +32,9 @@ class UsersView(generics.CreateAPIView):
         'isAdmin': a.is_admin,
         'email': a.user.email,
         'firstName': a.user.first_name,
-        'lastName': a.user.last_name
+        'lastName': a.user.last_name,
+        'avatar': a.user.avatar,
+        'registered': a.user.is_registered
       })
 
     return Response(users)

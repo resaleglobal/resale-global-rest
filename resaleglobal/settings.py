@@ -38,6 +38,9 @@ INSTALLED_APPS = [
     'resaleglobal',
     'resaleglobal.account',
     'resaleglobal.admin',
+    'resaleglobal.reseller',
+    'resaleglobal.consignor',
+    'resaleglobal.buyer',
     'rest_framework',
     'rest_framework.authtoken',
     'corsheaders'

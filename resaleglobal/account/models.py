@@ -11,6 +11,7 @@ class Domain(models.Model):
 class Reseller(models.Model):
   name = models.CharField(max_length=50)
   domain = models.ForeignKey(Domain, on_delete=models.CASCADE, blank=True, null=True)
+  shopify_key = models.CharField(max_length=1000, blank=True, null=True)
 
   def json(self):
     return {
@@ -18,6 +19,7 @@ class Reseller(models.Model):
       'name': self.name,
       'domain': self.domain.name    
     }
+
   class Meta:
     managed = True
     db_table = 'reseller'

@@ -39,4 +39,31 @@ class UsersView(generics.CreateAPIView):
 
     return Response(users)
 
-    return Response(status=status.HTTP_200_OK)
+class ShopifyKeyView(generics.CreateAPIView):
+
+  permission_classes = (
+    permissions.IsAuthenticated,
+    ResellerAdminPermission,
+  )
+
+  def get(self, request, *args, **kwargs):
+    account_id = kwargs['accountId']
+    reseller = Reseller.objects.filter(pk=account_id).first()
+
+    result = {}
+    result['shopifyKey'] = reseller.shopify_key
+
+    return Response(result)
+
+  def post(self, request, *args, **kwargs):
+    new_key = request.data.get("shopifyKey")
+
+    if new_key is None:
+      return Response(status=status.HTTP_400_BAD_REQUEST)
+    
+    account_id = kwargs['accountId']
+    reseller = Reseller.objects.filter(pk=account_id).first()
+    reseller.shopify_key = new_key
+    reseller.save()
+
+    return Response(status=status.HTTP_202_ACCEPTED)

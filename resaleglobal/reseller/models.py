@@ -57,6 +57,16 @@ class Item(models.Model):
   brand = models.ForeignKey(Brand, on_delete=models.CASCADE)
   price = models.DecimalField(max_digits=6, decimal_places=2)
 
+  def json(self):
+    return {
+      'id': self.pk,
+      'name': self.name,
+      'resellerId': self.reseller.pk,
+      'consignorId': self.consignor.pk,
+      'brand': self.brand.json(),
+      'price': self.price
+    }
+
 class ItemFields(models.Model):
   value = models.CharField(max_length=255)
   item = models.ForeignKey(Item, on_delete=models.CASCADE)

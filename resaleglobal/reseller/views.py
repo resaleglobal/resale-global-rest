@@ -7,7 +7,7 @@ from rest_framework import permissions, generics, status
 from resaleglobal.permissions import ResellerPermission
 from resaleglobal.account.models import UserResellerAssignment, Reseller
 
-from .models import Category, Brand, Merchandise, Field
+from .models import Category, Brand, Merchandise, Field, Item
 
 from django.db.models import Q
 import json
@@ -30,7 +30,7 @@ class CategoriesView(generics.CreateAPIView):
     reseller = Reseller.objects.filter(pk=account_id).first()
     categories = Category.objects.filter(Q(reseller=reseller) | Q(reseller=None))
 
-    cats =[]
+    cats = []
     for cat in categories:
       cats.append(cat.json())
 
@@ -58,7 +58,7 @@ class BrandsView(generics.CreateAPIView):
     reseller = Reseller.objects.filter(pk=account_id).first()
     brands = Brand.objects.filter(Q(reseller=reseller) | Q(reseller=None))
 
-    bs =[]
+    bs = []
     for b in brands:
       bs.append(b.json())
 
@@ -77,7 +77,7 @@ class MerchandiseView(generics.CreateAPIView):
     reseller = Reseller.objects.filter(pk=account_id).first()
     merchandise = Merchandise.objects.filter(Q(reseller=reseller) | Q(reseller=None))
 
-    ms =[]
+    ms = []
     for m in merchandise:
       ms.append(m.json())
 
@@ -95,8 +95,29 @@ class FieldsView(generics.CreateAPIView):
     reseller = Reseller.objects.filter(pk=account_id).first()
     fields = Field.objects.filter(Q(reseller=reseller) | Q(reseller=None))
 
-    fs =[]
+    fs = []
     for f in fields:
       fs.append(f.json())
 
     return Response(fs)
+
+class ItemsView(generics.CreateAPIView):
+
+  permission_classes = (
+    permissions.IsAuthenticated,
+    ResellerPermission,
+  )
+
+  def get(self, request, *args, **kwargs):
+    account_id = kwargs['accountId']
+    reseller = Reseller.objects.filter(pk=account_id).first()
+    db_items = Item.objects.filter(reseller=Reseller)
+
+    items = []
+    for item in db_items:
+      items.append(item.json())
+
+    return Response(items)
+
+  def post(self, request, *args, **kwargs):
+    return Response(status=status.HTTP_201_CREATED)

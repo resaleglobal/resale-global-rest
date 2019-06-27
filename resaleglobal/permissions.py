@@ -33,7 +33,7 @@ class ResellerPermission(permissions.BasePermission):
     Global permission check reseller APIss
     """
 
-    message = "User does not have admin access."
+    message = "User does not have reseller access."
 
     def has_permission(self, request, view):
 

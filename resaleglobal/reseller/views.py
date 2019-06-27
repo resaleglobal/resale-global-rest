@@ -120,4 +120,7 @@ class ItemsView(generics.CreateAPIView):
     return Response(items)
 
   def post(self, request, *args, **kwargs):
+    account_id = kwargs['accountId']
+    reseller = Reseller.objects.filter(pk=account_id).first()
+    reseller.shopify_key
     return Response(status=status.HTTP_201_CREATED)

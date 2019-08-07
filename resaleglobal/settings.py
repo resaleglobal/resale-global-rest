@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 
 import os
 import datetime
+import shopify
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -26,7 +27,7 @@ SECRET_KEY = '6ut)^omh$aa*3=$z$g-#8@0&$mj9l*gy5b+36ialiyrp+n3e#c'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['0.0.0.0', 'localhost']
+ALLOWED_HOSTS = ['0.0.0.0', 'localhost', 'portal.resaleglobal.com', 'www.portal.resaleglobal.com', 'api.resaleglobal.com', 'www.api.resaleglobal.com']
 
 
 # Application definition
@@ -83,10 +84,11 @@ CORS_ORIGIN_ALLOW_ALL = True
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'HOST': 'db',
-        'PORT': 5432,
+        'NAME': 'defaultdb',
+        'USER': 'doadmin',
+        'HOST': 'postgres-db-do-user-4862315-0.db.ondigitalocean.com',
+        'PORT': 25060,
+        'PASSWORD': 'xxy751iu76enkmcx',
     }
 }
 
@@ -124,6 +126,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
+
+SHOPIFY_API_KEY = '010c8b62875d3ac92ea889dbe527d16d'
+SHOPIFY_API_SECRET = '6388973e1e6d6d9dce9aa09ff764ad4f'
+SHOPIFY_REDIRECT_URL = 'https://api.resaleglobal.com/account/v1/shopify-auth'
+SHOPIFY_SCOPES = ['read_products', 'write_products', 'read_customers', 'read_orders']
+SHOPIFY_VERSION = '2019-04'
+
+shopify.Session.setup(api_key=SHOPIFY_API_KEY, secret=SHOPIFY_API_SECRET)
+
+INVITE_SALT = "thisismysalthash"
 
 JWT_AUTH = {
     'JWT_ENCODE_HANDLER':

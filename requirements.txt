@@ -42,3 +42,4 @@ virtualenv-clone==0.3.0
 virtualenvwrapper==4.8.2
 wrapt==1.11.1
 django-cors-headers==3.0.2
+ShopifyAPI==5.1.0

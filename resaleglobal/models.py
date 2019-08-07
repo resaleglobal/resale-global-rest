@@ -9,13 +9,15 @@ from django.utils.translation import ugettext_lazy as _
 from .managers import UserManager
 
 class User(AbstractBaseUser, PermissionsMixin):
-    email = models.EmailField(_('email address'), primary_key=True)
+    email = models.EmailField(_('email address'), unique=True)
     first_name = models.CharField(_('first name'), max_length=30, blank=True)
     last_name = models.CharField(_('last name'), max_length=30, blank=True)
     date_joined = models.DateTimeField(_('date joined'), auto_now_add=True)
     is_active = models.BooleanField(_('active'), default=True)
     avatar = models.CharField(_('avatar'), max_length=5000, null=True, blank=True)
     is_registered = models.BooleanField(_('registered'), default=False)
+    can_login = models.BooleanField(default=True)
+    number = models.CharField(max_length=15, blank=True, null=True)
 
     objects = UserManager()
 

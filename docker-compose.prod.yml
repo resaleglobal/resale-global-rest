@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  rest:
+    build:
+      context: .
+      dockerfile: Dockerfile-prod
+    image: trow.kube-public:31000/resale_global_rest
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"

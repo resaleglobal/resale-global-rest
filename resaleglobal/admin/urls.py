@@ -1,7 +1,7 @@
 from django.urls import path
-from .views import UsersView, ShopifyKeyView
+from .views import UsersView, UserView
 
 urlpatterns = [
     path('users', UsersView.as_view(), name="users"),
-    path('shopify-key', ShopifyKeyView.as_view(), name="shopify-key")
+    path('user', UserView.as_view(), name="users"),
 ]

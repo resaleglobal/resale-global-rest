@@ -60,18 +60,6 @@ class Attributes(models.Model):
       'name': self.name,
     }
 
-class AttributeValues(models.Model):
-  attribute = models.ForeignKey(Attributes, on_delete=models.CASCADE)
-  reseller = models.ForeignKey(Reseller, on_delete=models.CASCADE, blank=True, null=True)
-  value = models.CharField(max_length=50, null=False)
-
-  def json(self):
-    return {
-      'id': self.pk,
-      'key': self.attributes.name,
-      'value': self.value
-    }
-
 class CategoryAttributes(models.Model):
   attribute = models.ForeignKey(Attributes, on_delete=models.CASCADE)
   category = models.ForeignKey(Category, on_delete=models.CASCADE)
@@ -79,7 +67,7 @@ class CategoryAttributes(models.Model):
 
   def json(self):
     return {
-      'id': self.pk,
+      'id': self.attribute.pk,
       'attribute': self.attribute.name,
       'custom': self.reseller is not None
     }
@@ -121,6 +109,12 @@ class Item(models.Model):
     }
 
   def item_list(self):
+    
+    category = None
+
+    if self.category is not None:
+      category = self.category.json()
+
     return {
       'id': self.pk,
       'title': self.title,
@@ -129,11 +123,11 @@ class Item(models.Model):
       'status': self.status,
       'price': self.price,
       'postDate': self.date_added,
-      # 'category': self.category.json()
+      'category': category
     }
 
 class ItemAttributes(models.Model):
-  value = models.ForeignKey(AttributeValues, on_delete=models.CASCADE)
+  value = models.CharField(max_length=50, null=False)
   item = models.ForeignKey(Item, on_delete=models.CASCADE)
   attribute = models.ForeignKey(Attributes, on_delete=models.CASCADE)
   reseller = models.ForeignKey(Reseller, on_delete=models.CASCADE, blank=True, null=True)
@@ -141,7 +135,8 @@ class ItemAttributes(models.Model):
   def json(self):
     return {
       'id': self.pk,
-      'value': self.value
+      'value': self.value,
+      'attribute': self.attribute.json()
     }
 
 class ItemPhotos(models.Model):

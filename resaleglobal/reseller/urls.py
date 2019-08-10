@@ -2,7 +2,7 @@ from .views import ItemsView, ConsignorsView, CategoriesView, SelectedCategories
 from django.urls import path
 
 urlpatterns = [
-  path('attributes', AttributesView.as_view(), name="attributes"),
+  path('attributes/<str:categoryId>', AttributesView.as_view(), name="attributes"),
   path('items', ItemsView.as_view(), name="items"),
   path('categories', CategoriesView.as_view(), name="categories"),
   path('categories/selected', SelectedCategoriesView.as_view(), name="selected-categories"),

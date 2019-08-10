@@ -7,7 +7,7 @@ from rest_framework import permissions, generics, status
 from resaleglobal.permissions import ResellerPermission
 from resaleglobal.account.models import UserResellerAssignment, Reseller, Consignor, RCRelationship, UserConsignorAssignment
 
-from .models import Category, Item, CategoryResellerRelationship, Department, Section, Attributes, CategoryAttributes
+from .models import Category, Item, CategoryResellerRelationship, Department, Section, Attributes, CategoryAttributes, ItemAttributes
 
 from django.db.models import Q
 import json
@@ -17,6 +17,7 @@ import datetime
 import hashlib
 import decimal
 from django.conf import settings
+import shopify
 
 User = get_user_model()
 
@@ -30,8 +31,10 @@ class AttributesView(generics.CreateAPIView):
 
   def get(self, request, *args, **kwargs):
     account_id = kwargs['accountId']
+    category_id = kwargs['categoryId']
     reseller = Reseller.objects.filter(pk=account_id).first()
-    query_attributes = Attributes.objects.filter(Q(reseller=reseller) | Q(reseller=None))
+    category = Category.objects.filter(pk=category_id).first()
+    query_attributes = CategoryAttributes.objects.filter(category=category)
 
     attributes = []
     for attribute in query_attributes:
@@ -165,7 +168,7 @@ class CategoriesView(generics.CreateAPIView):
   def get(self, request, *args, **kwargs):
     account_id = kwargs['accountId']
     reseller = Reseller.objects.filter(pk=account_id).first()
-    categories = Category.objects.filter(Q(reseller=reseller) | Q(reseller=None))
+    categories = Category.objects.filter(Q(reseller=reseller) | Q(reseller=None)).order_by('section__department__name')
     selected_categories = list(CategoryResellerRelationship.objects.filter(reseller=reseller, category__in=categories).values_list('category__id', flat=True))
 
     cats = []
@@ -194,7 +197,6 @@ class CategoriesView(generics.CreateAPIView):
       CategoryResellerRelationship(reseller=reseller, category=category).save()
 
     attributes = request.data.get('attributes')
-    print(attributes)
 
     for a in attributes:
       attribute = Attributes.objects.filter(name=a).first()
@@ -217,7 +219,7 @@ class SelectedCategoriesView(generics.CreateAPIView):
     reseller = Reseller.objects.filter(pk=account_id).first()
     selected_categories = CategoryResellerRelationship.objects.filter(reseller=reseller)
     cats = []
-    for cat in categories:
+    for cat in selected_categories:
       cats.append(cat.json())
 
     return Response(cats)
@@ -228,7 +230,6 @@ class SelectedCategoriesView(generics.CreateAPIView):
     reseller = Reseller.objects.filter(pk=account_id).first()
     body = json.loads(request.body)
     for cat in body:
-      pprint(cat)
       Category(name=cat['name']).save()
 
     return Response(status=status.HTTP_201_CREATED)
@@ -244,7 +245,7 @@ class ItemsView(generics.CreateAPIView):
     account_id = kwargs['accountId']
     reseller = Reseller.objects.filter(pk=account_id).first()
 
-    search_items = Item.objects.filter(reseller=reseller)
+    search_items = Item.objects.filter(reseller=reseller).order_by("title")
 
     items = []
 
@@ -263,7 +264,9 @@ class ItemsView(generics.CreateAPIView):
     title = request.data.get('title')
 
     price = request.data.get('price', dzero)
+    print('price', price)
     price = price if price else dzero
+    print('price', price)
 
     retail_price = request.data.get('retailPrice', dzero)
     retail_price = retail_price if retail_price else dzero
@@ -294,14 +297,16 @@ class ItemsView(generics.CreateAPIView):
     list_ready = request.data.get('listReady', False)
     post_date = datetime.datetime.now(datetime.timezone.utc)
 
+    description = request.data.get('description', '')
+
     reseller = Reseller.objects.filter(pk=reseller_id).first()
     consignor = Consignor.objects.filter(pk=consignor_id).first()
-    # category = Category.objects.filter(pk=category_id).first()
+    category = Category.objects.filter(pk=category_id).first()
 
     item = Item(
       reseller=reseller,
       consignor=consignor,
-      #category=category,
+      category=category,
       title=title,
       price=price,
       retail_price=retail_price,
@@ -322,8 +327,61 @@ class ItemsView(generics.CreateAPIView):
       date_updated=date_updated,
       status='NEW'
     )
-
+      
     item.save()
+
+    attributes = request.data.get('attributes')
+    for a in attributes:
+      a = json.loads(a)
+      attribute_id = a['attributeId']
+      attribute = Attributes.objects.filter(pk=attribute_id).first()
+      ItemAttributes(reseller=reseller, item=item, attribute=attribute, value=a['value']).save()
+
+    session = shopify.Session(reseller.domain, '2019-04', reseller.shopify_access_token)
+    shopify.ShopifyResource.activate_session(session)
+    new_product = shopify.Product()
+    new_product.title = title
+    new_product.product_type = category.json()['displayName']
+    description = """
+        <strong> {0} </strong>
+        <br /><br />
+        """.format(description)
+
+    new_product.save()
+
+    variant_object = {
+            "product_id": new_product.id,
+            "inventory_quantity": str(quantity),
+            "price": str(price),
+            "weight": weight
+        }
+
+    for a in attributes:
+      a = json.loads(a)
+      attribute_id = a['attributeId']
+      attribute = Attributes.objects.filter(pk=attribute_id).first()
+      new_product.add_metafield(shopify.Metafield({
+        'namespace': 'attribute',
+        'key': attribute.json()['name'],
+        'value': a['value'],
+        'value_type': 'string',
+      }))
+      variant_object[attribute.json()['name']] = a['value']
+      description = """
+        {0}
+        <strong> {1} </strong>: {2}
+        <br />
+      """.format(description, attribute.json()['name'], a['value'])
+
+    print(variant_object)
+    variant = shopify.Variant(variant_object)
+    variant.save()
+    new_product.body_html = description
+    new_product.add_variant(variant)
+      
+    new_product.save()
+
+    
 
     return Response(status=status.HTTP_201_CREATED)
 

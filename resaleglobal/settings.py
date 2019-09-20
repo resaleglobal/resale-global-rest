@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 import os
 import datetime
 import shopify
+import boto3
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -134,6 +135,19 @@ SHOPIFY_SCOPES = ['read_products', 'write_products', 'read_customers', 'read_ord
 SHOPIFY_VERSION = '2019-04'
 
 shopify.Session.setup(api_key=SHOPIFY_API_KEY, secret=SHOPIFY_API_SECRET)
+
+DO_KEY='GECTNYFVLOLJYNRTABP5'
+DO_SECRET='LpMAU2e+ba9rjo9oOKyoZVBEZF5kI2GGPkEall1GZf8'
+DO_SPACE='resale-global'
+DO_REGION='sfo2'
+DO_URL='https://resale-global.sfo2.digitaloceanspaces.com'
+
+session = boto3.session.Session()
+spaces_client = session.client('s3',
+                        region_name=DO_REGION,
+                        endpoint_url=DO_URL,
+                        aws_access_key_id=DO_KEY,
+                        aws_secret_access_key=DO_SECRET)
 
 INVITE_SALT = "thisismysalthash"
 

@@ -28,6 +28,15 @@ class Consignor(models.Model):
       'id': self.pk,
       'name': self.name,
     }
+
+  def info(self):
+    return {
+      'id': self.pk,
+      'name': self.name,
+      'number': self.number,
+      'address': self.address,
+      'email': self.email
+    }
   
   class Meta:
     managed = True
@@ -70,5 +79,10 @@ class UserConsignorAssignment(models.Model):
       'id': self.consignor.pk,
       'consignor': self.consignor,
     }
+
+  def get_user(self):
+    user = self.user.json()
+    user['mainContact'] = self.main_contact
+    return user
 
   

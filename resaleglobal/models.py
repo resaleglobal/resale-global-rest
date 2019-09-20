@@ -40,3 +40,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         Returns the short name for the user.
         '''
         return self.first_name
+
+    def json(self):
+        return {
+            'fullName': self.get_full_name(),
+            'firstName': self.first_name,
+            'lastName': self.last_name,
+            'email': self.email,
+            'number': self.number,
+            'isRegistered': self.is_registered
+        }

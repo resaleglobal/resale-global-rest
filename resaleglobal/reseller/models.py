@@ -1,5 +1,6 @@
 from django.db import models
 from resaleglobal.account.models import Reseller, Consignor
+import uuid
 
 # Resller added to Category, Merchandise, Brand and Field to create custom items. Null items are available to all companies.
 
@@ -14,6 +15,13 @@ class Department(models.Model):
       'custom': self.reseller is not None
     }
 
+class DepartmentResellerRelationship(models.Model):
+  reseller = models.ForeignKey(Reseller, on_delete=models.CASCADE)
+  department = models.ForeignKey(Department, on_delete=models.CASCADE)
+
+  def json(self):
+    return self.department.json()
+
 class Section(models.Model):
   reseller = models.ForeignKey(Reseller, on_delete=models.CASCADE, blank=True, null=True)
   name = models.CharField(max_length=50, unique=True)
@@ -26,6 +34,13 @@ class Section(models.Model):
       'department': self.department.name,
       'custom': self.reseller is not None
     }
+
+class SectionResellerRelationship(models.Model):
+  reseller = models.ForeignKey(Reseller, on_delete=models.CASCADE)
+  section = models.ForeignKey(Section, on_delete=models.CASCADE)
+
+  def json(self):
+    return self.section.json()
 
 class Category(models.Model):
   reseller = models.ForeignKey(Reseller, on_delete=models.CASCADE, blank=True, null=True)
@@ -46,6 +61,9 @@ class Category(models.Model):
 class CategoryResellerRelationship(models.Model):
   reseller = models.ForeignKey(Reseller, on_delete=models.CASCADE)
   category = models.ForeignKey(Category, on_delete=models.CASCADE)
+
+  class Meta:
+    unique_together = ('reseller', 'category',)
 
   def json(self):
     return self.category.json()
@@ -97,15 +115,20 @@ class Item(models.Model):
   list_ready = models.BooleanField(default=False)
   post_date = models.DateTimeField(null=True)
   status = models.CharField(max_length=50)
+  description = models.CharField(max_length=10000)
 
   def json(self):
     return {
       'id': self.pk,
-      'name': self.name,
-      'resellerId': self.reseller.pk,
-      'consignorId': self.consignor.pk,
-      'brand': self.brand.json(),
-      'price': self.price
+      'reseller': self.reseller.json(),
+      'consignor': self.consignor.json(),
+      'price': self.price,
+      'title': self.title,
+      'status': self.status,
+      'postDate': self.date_added,
+      'category': self.category.json(),
+      'description': self.description,
+      'weight': self.weight
     }
 
   def item_list(self):
@@ -140,12 +163,14 @@ class ItemAttributes(models.Model):
     }
 
 class ItemPhotos(models.Model):
-  url = models.CharField(max_length=5000)
+  file_id = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+  file_type = models.CharField(max_length=255, default='jpg')
   reseller = models.ForeignKey(Reseller, on_delete=models.CASCADE, blank=True, null=True)
   item = models.ForeignKey(Item, on_delete=models.CASCADE)
 
   def json(self):
     return {
-      'id': self.pk,
-      'url': self.item
+      'id': str(self.file_id),
+      'bucket': self.reseller.domain,
+      'url': 'images' + '/' + str(self.file_id) + '.' + self.file_type
     }

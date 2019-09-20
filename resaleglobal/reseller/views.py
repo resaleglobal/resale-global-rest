@@ -7,7 +7,7 @@ from rest_framework import permissions, generics, status
 from resaleglobal.permissions import ResellerPermission
 from resaleglobal.account.models import UserResellerAssignment, Reseller, Consignor, RCRelationship, UserConsignorAssignment
 
-from .models import Category, Item, CategoryResellerRelationship, Department, Section, Attributes, CategoryAttributes, ItemAttributes
+from .models import Category, Item, CategoryResellerRelationship, DepartmentResellerRelationship, SectionResellerRelationship, Department, Section, Attributes, CategoryAttributes, ItemAttributes, ItemPhotos
 
 from django.db.models import Q
 import json
@@ -18,8 +18,28 @@ import hashlib
 import decimal
 from django.conf import settings
 import shopify
+import boto3
 
 User = get_user_model()
+
+
+class AllAttributesView(generics.CreateAPIView):
+
+  permission_classes = (
+    permissions.IsAuthenticated,
+    ResellerPermission,
+  )
+
+  def get(self, request, *args, **kwargs):
+    account_id = kwargs['accountId']
+    reseller = Reseller.objects.filter(pk=account_id).first()
+    query_attributes = Attributes.objects.filter(Q(reseller=reseller) | Q(reseller=None))
+
+    attributes = []
+    for attribute in query_attributes:
+      attributes.append(attribute.json())
+
+    return Response(attributes)
 
 
 class AttributesView(generics.CreateAPIView):
@@ -53,7 +73,8 @@ class ConsignorsView(generics.CreateAPIView):
   def get(self, request, *args, **kwargs):
     account_id = kwargs['accountId']
     reseller = Reseller.objects.filter(pk=account_id).first()
-    relationships = RCRelationship.objects.filter(reseller=reseller)
+    search_filter = request.GET.get("searchFilter", "")
+    relationships = RCRelationship.objects.filter(reseller=reseller, consignor__name__icontains=search_filter)
     categories = Category.objects.filter(Q(reseller=reseller) | Q(reseller=None))
 
     consignors = []
@@ -108,15 +129,19 @@ class SectionsView(generics.CreateAPIView):
 
     if department_id is not None:
       department = Department.objects.filter(pk=department_id).first()
-      selected_sections = Section.objects.filter(Q(reseller=reseller, department=department) | Q(reseller=None, department=department))
+      sections = Section.objects.filter(Q(reseller=reseller, department=department) | Q(reseller=None, department=department))
     else:
-      selected_sections = Section.objects.filter(Q(reseller=reseller) | Q(reseller=None))
+      sections = Section.objects.filter(Q(reseller=reseller) | Q(reseller=None))
 
-    sections = []
-    for section in selected_sections:
-      sections.append(section.json())
+    selected_sections = list(SectionResellerRelationship.objects.filter(reseller=reseller, section__in=sections).values_list('section__id', flat=True))
 
-    return Response(sections)
+    ret_sections = []
+    for section in sections:
+      next_section = section.json()
+      next_section['selected'] = next_section['id'] in selected_sections
+      ret_sections.append(next_section)
+
+    return Response(ret_sections)
 
   def post(self, request, *args, **kwargs):
     account_id = kwargs['accountId']
@@ -140,13 +165,16 @@ class DepartmentsView(generics.CreateAPIView):
   def get(self, request, *args, **kwargs):
     account_id = kwargs['accountId']
     reseller = Reseller.objects.filter(pk=account_id).first()
-    selected_departments = Department.objects.filter(Q(reseller=reseller) | Q(reseller=None))
+    departments = Department.objects.filter(Q(reseller=reseller) | Q(reseller=None))
+    selected_departments = list(DepartmentResellerRelationship.objects.filter(reseller=reseller, department__in=departments).values_list('department__id', flat=True))
 
-    departments = []
-    for department in selected_departments:
-      departments.append(department.json())
+    deps = []
+    for department in departments:
+      next_dep = department.json()
+      next_dep['selected'] = next_dep['id'] in selected_departments
+      deps.append(next_dep)
 
-    return Response(departments)
+    return Response(deps)
 
   def post(self, request, *args, **kwargs):
     account_id = kwargs['accountId']
@@ -168,7 +196,8 @@ class CategoriesView(generics.CreateAPIView):
   def get(self, request, *args, **kwargs):
     account_id = kwargs['accountId']
     reseller = Reseller.objects.filter(pk=account_id).first()
-    categories = Category.objects.filter(Q(reseller=reseller) | Q(reseller=None)).order_by('section__department__name')
+    search_filter = request.GET.get("searchFilter", "")
+    categories = Category.objects.filter(Q(reseller=reseller, name__icontains=search_filter) | Q(reseller=None, name__icontains=search_filter)).order_by('section__department__name')
     selected_categories = list(CategoryResellerRelationship.objects.filter(reseller=reseller, category__in=categories).values_list('category__id', flat=True))
 
     cats = []
@@ -241,11 +270,20 @@ class ItemsView(generics.CreateAPIView):
     ResellerPermission,
   )
 
+  session = boto3.session.Session()
+  spaces_client = session.client('s3',
+                      region_name=settings.DO_REGION,
+                      endpoint_url=settings.DO_URL,
+                      aws_access_key_id=settings.DO_KEY,
+                      aws_secret_access_key=settings.DO_SECRET)
+
   def get(self, request, *args, **kwargs):
     account_id = kwargs['accountId']
     reseller = Reseller.objects.filter(pk=account_id).first()
 
-    search_items = Item.objects.filter(reseller=reseller).order_by("title")
+    search_filter = request.GET.get("searchFilter", "")
+
+    search_items = Item.objects.filter(reseller=reseller, title__icontains=search_filter).order_by("title")
 
     items = []
 
@@ -256,7 +294,6 @@ class ItemsView(generics.CreateAPIView):
 
   def post(self, request, *args, **kwargs):
     reseller_id = kwargs['accountId']
-
     dzero = decimal.Decimal(0)
 
     consignor_id = request.data.get('consignorId')
@@ -264,9 +301,7 @@ class ItemsView(generics.CreateAPIView):
     title = request.data.get('title')
 
     price = request.data.get('price', dzero)
-    print('price', price)
     price = price if price else dzero
-    print('price', price)
 
     retail_price = request.data.get('retailPrice', dzero)
     retail_price = retail_price if retail_price else dzero
@@ -331,8 +366,10 @@ class ItemsView(generics.CreateAPIView):
     item.save()
 
     attributes = request.data.get('attributes')
+    attributes = json.loads(attributes)
+
     for a in attributes:
-      a = json.loads(a)
+      print(a)
       attribute_id = a['attributeId']
       attribute = Attributes.objects.filter(pk=attribute_id).first()
       ItemAttributes(reseller=reseller, item=item, attribute=attribute, value=a['value']).save()
@@ -357,7 +394,6 @@ class ItemsView(generics.CreateAPIView):
         }
 
     for a in attributes:
-      a = json.loads(a)
       attribute_id = a['attributeId']
       attribute = Attributes.objects.filter(pk=attribute_id).first()
       new_product.add_metafield(shopify.Metafield({
@@ -373,7 +409,6 @@ class ItemsView(generics.CreateAPIView):
         <br />
       """.format(description, attribute.json()['name'], a['value'])
 
-    print(variant_object)
     variant = shopify.Variant(variant_object)
     variant.save()
     new_product.body_html = description
@@ -381,7 +416,21 @@ class ItemsView(generics.CreateAPIView):
       
     new_product.save()
 
-    
+    item.description = description
+    item.save()
+
+    for image in request.data.getlist('image'):
+      file_type = image.name.rsplit('.', 1)[1]
+      photo = ItemPhotos(reseller=reseller, item=item, file_type=file_type)
+      photo.save()
+      photo_json = photo.json()
+      content_type = "image/" + photo.file_type
+      response = self.spaces_client.put_object(
+          Body=image,  # Path to local file
+          Bucket=photo_json['bucket'],  # Name of Space
+          Key=photo_json['url'],
+          ACL='public-read',
+          ContentType=content_type)
 
     return Response(status=status.HTTP_201_CREATED)
 

@@ -17,7 +17,7 @@ MarkupSafe==1.0
 mccabe==0.6.1
 packaging==17.1
 pbr==4.2.0
-Pillow==6.0.0
+Pillow==6.2.0
 pipenv==2018.7.1
 psycopg2==2.8.2
 Pygments==2.2.0
